@@ -1,0 +1,40 @@
+# Test configuration - KV mode
+cassandra:
+  contact-points: localhost
+  port: 9042
+  keyspace: cassandra_sql
+  local-datacenter: datacenter1
+
+postgres:
+  port: 5432
+
+cassandra-sql:
+  storage-mode: kv  # Use KV mode for these tests
+  
+  kv-storage:
+    mvcc:
+      enabled: true
+      gc-retention-seconds: 86400
+      gc-interval-seconds: 3600
+      max-versions-per-key: 10
+    
+    transaction:
+      timeout-seconds: 30
+      lock-ttl-seconds: 60
+    
+    encoding:
+      compression: false
+      encryption: false
+    
+    performance:
+      batch-size: 1000
+      scan-page-size: 100
+
+logging:
+  level:
+    com.geico.poc.cassandrasql: INFO
+    org.apache.calcite: WARN
+    com.datastax: WARN
+
+
+

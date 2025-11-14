@@ -1,0 +1,91 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cassandra-sql-mvp
+
+cassandra:
+  contact-points: localhost
+  port: 9042
+  local-datacenter: datacenter1
+  keyspace: cassandra_sql
+
+# Cassandra SQL Configuration
+cassandra-sql:
+  # Storage mode: 'schema' or 'kv' (default)
+  # - schema: Use Cassandra's native schema (tables, columns, types)
+  # - kv: Use Cassandra as a key-value store with custom encoding (RECOMMENDED)
+  storage-mode: kv
+  
+  # PostgreSQL wire protocol configuration
+  protocol:
+    # Connection limits
+    max-connections: 1000
+    connection-timeout-seconds: 30
+    
+    # Query execution
+    query-timeout-seconds: 30
+  
+  # Key-Value storage configuration (only used when storage-mode=kv)
+  kv-storage:
+    # MVCC (Multi-Version Concurrency Control) settings
+    mvcc:
+      enabled: true
+      gc-retention-seconds: 86400  # 24 hours
+      gc-interval-seconds: 3600    # 1 hour
+      max-versions-per-key: 10
+    
+    # Transaction settings
+    transaction:
+      timeout-seconds: 30
+      lock-ttl-seconds: 60
+    
+    # Encoding settings
+    encoding:
+      compression: false  # Future: enable compression
+      encryption: false   # Future: enable encryption
+    
+    # Performance settings
+    performance:
+      batch-size: 1000
+      scan-page-size: 100
+  
+  # Query Optimization (Calcite Cost-Based Optimizer)
+  optimizer:
+    # Enable Calcite CBO for query planning
+    # When enabled, uses AST-based parsing and cost-based optimization
+    # When disabled, falls back to legacy string-based parser
+    enable-calcite-cbo: true  # Default: true (production-ready)
+    
+    # Enable plan caching
+    cache-plans: true
+    cache-size: 1000
+    
+    # Enable query statistics collection for cost model
+    collect-statistics: true
+  
+  # Schema Management
+  schema:
+    # Background refresh interval (seconds) - how often to reload schema from KV storage
+    # Set to 0 to disable background refresh
+    refresh-interval-seconds: 10
+    
+    # Force reload from KV storage on every getTable() call (for debugging)
+    # WARNING: This has significant performance impact - only use for debugging
+    always-reload: false
+
+logging:
+  level:
+    # Default log level for Cassandra SQL - can be overridden with --logging.level.com.geico.poc.cassandrasql=DEBUG
+    # or environment variable CASSANDRA_SQL_LOG_LEVEL=DEBUG
+    com.geico.poc.cassandrasql: INFO
+    org.apache.calcite: INFO
+    com.datastax: INFO
+    org.springframework: INFO
+    io.netty: INFO
+
+
+
+
+

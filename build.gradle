@@ -1,0 +1,197 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.1.5'
+    id 'io.spring.dependency-management' version '1.1.3'
+}
+
+group = 'org.cassandrasql'
+version = '0.1.0-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot Web
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Apache Calcite (for SQL parsing)
+    implementation 'org.apache.calcite:calcite-core:1.35.0'
+    
+    // Apache Calcite Server (for DDL support - CREATE TABLE, etc.)
+    implementation 'org.apache.calcite:calcite-server:1.35.0'
+
+    // Cassandra Driver
+    implementation 'com.datastax.oss:java-driver-core:4.17.0'
+
+    // Jakarta Annotations (for @PostConstruct, @PreDestroy)
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+    
+    // Netty (for PostgreSQL wire protocol)
+    implementation 'io.netty:netty-all:4.1.100.Final'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testImplementation 'org.mockito:mockito-core:5.5.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.5.0'
+    
+    // PostgreSQL JDBC driver for testing PostgreSQL protocol
+    testImplementation 'org.postgresql:postgresql:42.6.0'
+}
+
+// Configure test task
+tasks.named('test') {
+    useJUnitPlatform()
+    
+    // Fail build on test failures
+    ignoreFailures = false
+    
+    // Show test results
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = false
+        showCauses = true
+        showStackTraces = true
+    }
+    
+    // Set test timeout (increased to 20 minutes for comprehensive test suites)
+    timeout = Duration.ofMinutes(20)
+    
+    // JVM args for tests
+    jvmArgs = [
+        '-Xmx2g',
+        '-XX:+UseG1GC'
+    ]
+    
+    // System properties for tests
+    systemProperty 'spring.profiles.active', 'test'
+    
+    // Separate unit tests from integration tests
+    filter {
+        // Run all tests by default
+        includeTestsMatching "*Test"
+    }
+}
+
+// Separate integration test task
+task integrationTest(type: Test) {
+    description = 'Runs integration tests that require Cassandra'
+    group = 'verification'
+    
+    useJUnitPlatform()
+    
+    // Only run integration tests
+    filter {
+        includeTestsMatching "*IntegrationTest"
+    }
+    
+    // Fail build on test failures
+    ignoreFailures = false
+    
+    // Show test results
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true  // Show output for integration tests
+        showCauses = true
+        showStackTraces = true
+    }
+    
+    // Longer timeout for integration tests
+    timeout = Duration.ofMinutes(15)
+    
+    // More memory for integration tests
+    jvmArgs = [
+        '-Xmx4g',
+        '-XX:+UseG1GC'
+    ]
+    
+    systemProperty 'spring.profiles.active', 'test'
+    
+    // Ensure Cassandra is running
+    doFirst {
+        println "=" * 80
+        println "Running Integration Tests"
+        println "=" * 80
+        println "NOTE: Cassandra must be running on localhost:9042"
+        println "Start with: ./bin/start-cassandra.sh"
+        println "=" * 80
+    }
+    
+    doLast {
+        println "=" * 80
+        println "Integration Tests Complete"
+        println "=" * 80
+    }
+}
+
+// Make build depend on integration tests (only for CI/CD, not for bootRun)
+// Commented out to allow fast development iteration
+// Uncomment for CI/CD pipelines or run explicitly with: ./gradlew build
+// build.dependsOn integrationTest
+
+// Custom task to display project info
+task info {
+    doLast {
+        println "Project: ${project.name}"
+        println "Version: ${project.version}"
+        println "Java: ${sourceCompatibility}"
+        println "Spring Boot: 3.1.5"
+        println "Calcite: 1.35.0"
+        println "Cassandra Driver: 4.17.0"
+    }
+}
+
+// Task to run only unit tests (no integration tests)
+task unitTest(type: Test) {
+    description = 'Runs only unit tests (no integration tests)'
+    group = 'verification'
+    
+    useJUnitPlatform()
+    
+    filter {
+        excludeTestsMatching "*IntegrationTest"
+    }
+    
+    ignoreFailures = false
+    
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
+// Task to run application without tests (fast development)
+task runDev {
+    description = 'Runs the application without running tests (fast development)'
+    group = 'application'
+    dependsOn 'bootRun'
+    doFirst {
+        println "=" * 80
+        println "Starting Application (skipping tests for fast iteration)"
+        println "=" * 80
+        println "To run tests manually:"
+        println "  Unit tests:        ./gradlew unitTest"
+        println "  Integration tests: ./gradlew integrationTest"
+        println "  All tests:         ./gradlew test"
+        println "=" * 80
+    }
+}
+
+// Task to run full build with all tests (for CI/CD)
+task buildWithTests {
+    description = 'Builds the application and runs all tests (for CI/CD)'
+    group = 'build'
+    dependsOn 'build', 'integrationTest'
+    doFirst {
+        println "=" * 80
+        println "Running Full Build with All Tests"
+        println "=" * 80
+    }
+}
+

@@ -1,0 +1,48 @@
+# Test configuration for Cassandra-SQL
+# Uses KV mode for testing (primary storage mode)
+
+cassandra-sql:
+  # Use KV mode for tests
+  storage-mode: KV
+  
+  kv:
+    # Background Jobs Configuration (faster intervals for testing)
+    background-jobs:
+      enabled: true
+    
+    # Vacuum Job (faster for testing)
+    vacuum:
+      enabled: false  # DISABLED - vacuum is dangerous without proper testing
+      period-minutes: 1  # Run every minute in tests
+      initial-delay-minutes: 0  # Start immediately
+      retention-hours: 1  # Keep 1 hours of history (safe default)
+      batch-size: 100
+      max-execution-minutes: 5
+    
+    # Statistics Collection Job (faster for testing)
+    statistics:
+      enabled: true
+      period-minutes: 1  # Run every 2 minutes in tests
+      initial-delay-minutes: 0  # Start immediately
+      sample-rate: 1.0  # Full scan in tests
+      max-rows-per-table: 1000000
+      min-rows-threshold: 0
+    
+    # Compaction Job (disabled for tests)
+    compaction:
+      enabled: false
+
+# Cassandra connection
+spring:
+  cassandra:
+    contact-points: localhost
+    port: 9042
+    local-datacenter: datacenter1
+    keyspace-name: cassandra_sql
+    schema-action: none
+
+# Logging
+logging:
+  level:
+    com.geico.poc.cassandrasql: DEBUG
+    com.geico.poc.cassandrasql.kv.jobs: DEBUG

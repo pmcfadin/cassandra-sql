@@ -1,0 +1,217 @@
+# Cassandra-SQL Configuration for KV Storage Mode
+# This configuration is specific to KV mode and includes background job settings
+
+cassandra-sql:
+  # Storage mode: KV or SCHEMA
+  storage-mode: KV
+  
+  kv:
+    # Background Jobs Configuration
+    background-jobs:
+      # Master switch for all background jobs
+      enabled: true
+      
+      # Thread pool size (one thread per job)
+      thread-pool-size: 3
+    
+    # Vacuum Job - MVCC Cleanup
+    vacuum:
+      # Enable/disable vacuum job
+      enabled: true
+      
+      # How often to run vacuum (in minutes)
+      # Default: 5 minutes
+      # Production recommendation: 5-10 minutes
+      period-minutes: 5
+      
+      # Initial delay before first run (in minutes)
+      # Default: 1 minute (wait for system to stabilize)
+      initial-delay-minutes: 1
+      
+      # Retention period for old versions (in hours)
+      # Versions older than this will be deleted
+      # Default: 1 hour
+      # Production recommendation: 1-24 hours depending on workload
+      retention-hours: 1
+      
+      # Batch size for vacuum operations
+      # How many rows to delete in one batch
+      # Default: 1000
+      batch-size: 1000
+      
+      # Maximum execution time (in minutes)
+      # Vacuum will stop after this time to avoid blocking
+      # Default: 10 minutes
+      max-execution-minutes: 10
+    
+    # Statistics Collection Job - For Cost-Based Optimizer
+    statistics:
+      # Enable/disable statistics collection
+      enabled: true
+      
+      # How often to collect statistics (in minutes)
+      # Default: 30 minutes
+      # Production recommendation: 30-60 minutes
+      period-minutes: 30
+      
+      # Initial delay before first run (in minutes)
+      # Default: 2 minutes (wait for vacuum to run first)
+      initial-delay-minutes: 2
+      
+      # Sample rate for large tables (0.0 to 1.0)
+      # 0.1 = sample 10% of rows
+      # 1.0 = full scan (accurate but slow)
+      # Default: 0.1 (10% sample)
+      sample-rate: 0.1
+      
+      # Maximum rows to scan per table
+      # Prevents OOM on very large tables
+      # Default: 10000
+      max-rows-per-table: 10000
+      
+      # Tables to exclude from statistics collection
+      # Comma-separated list of table name patterns
+      # Default: empty (collect stats for all tables)
+      exclude-tables: ""
+      
+      # Minimum rows for statistics collection
+      # Tables with fewer rows will be skipped
+      # Default: 100
+      min-rows-threshold: 100
+    
+    # Compaction Job - Cassandra SSTable Compaction
+    compaction:
+      # Enable/disable compaction job
+      # Default: false (Cassandra auto-compaction is usually sufficient)
+      enabled: false
+      
+      # How often to trigger compaction (in hours)
+      # Default: 24 hours (daily)
+      period-hours: 24
+      
+      # Initial delay before first run (in hours)
+      # Default: 1 hour
+      initial-delay-hours: 1
+      
+      # Compaction strategy
+      # Options: major, minor, auto
+      # Default: auto (let Cassandra decide)
+      strategy: auto
+    
+    # Index Consistency Job - Verify Index Integrity
+    index-consistency:
+      # Enable/disable index consistency checks
+      # Default: true
+      enabled: true
+      
+      # How often to check index consistency (in minutes)
+      # Default: 15 minutes
+      # Production recommendation: 15-30 minutes
+      period-minutes: 15
+      
+      # Initial delay before first run (in minutes)
+      # Default: 1 minute
+      initial-delay-minutes: 1
+    
+    # Constraint Violation Checker Job - Verify UNIQUE and FK Constraints
+    constraint-checker:
+      # Enable/disable constraint violation checking
+      # Default: true
+      enabled: true
+      
+      # How often to check constraints (in minutes)
+      # Default: 30 minutes (less frequent due to full table scans)
+      # Production recommendation: 30-60 minutes
+      period-minutes: 30
+      
+      # Initial delay before first run (in minutes)
+      # Default: 5 minutes (wait for system to stabilize)
+      initial-delay-minutes: 5
+      
+      # Rate limit for scanning (keys per hour)
+      # Default: 10000 keys/hour (~3 keys/second)
+      # This prevents overwhelming the system during full table scans
+      # Production recommendation: 5000-20000 depending on system capacity
+      rate-limit-keys-per-hour: 10000
+      
+      # Maximum tables to check per run
+      # Default: 0 (unlimited - check all tables)
+      # Set to a positive number to limit scope per run
+      max-tables-per-run: 0
+      
+      # Tables to exclude from constraint checking
+      # Comma-separated list of table name patterns
+      # Default: empty (check all tables)
+      exclude-tables: ""
+
+# Logging configuration for background jobs
+logging:
+  level:
+    com.geico.poc.cassandrasql.kv.jobs: INFO
+    
+  # Log pattern for background jobs
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    
+  # Separate log file for background jobs (optional)
+  file:
+    name: logs/background-jobs.log
+    max-size: 10MB
+    max-history: 7
+
+# Monitoring and metrics
+management:
+  metrics:
+    export:
+      # Enable metrics export for background jobs
+      simple:
+        enabled: true
+    tags:
+      application: cassandra-sql
+      mode: kv
+  
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+  
+  health:
+    # Custom health indicators for background jobs
+    background-jobs:
+      enabled: true
+      # Fail health check if vacuum hasn't run in X minutes
+      vacuum-max-delay-minutes: 15
+      # Fail health check if statistics haven't been collected in X minutes
+      statistics-max-delay-minutes: 60
+    
+    # Materialized View Refresh Job - Automatic refresh of materialized views
+    materialized-view-refresh:
+      # Enable/disable automatic refresh
+      enabled: true
+      
+      # Default refresh interval for all materialized views (in minutes)
+      # Views will be refreshed at this interval unless a custom schedule is set
+      # Default: 60 minutes (1 hour)
+      # Set to 0 or negative to disable auto-refresh by default
+      default-refresh-interval-minutes: 60
+      
+      # Maximum number of views to refresh concurrently
+      # Default: 3
+      # Prevents overwhelming the system with too many refreshes at once
+      max-concurrent-refreshes: 3
+      
+      # Views to exclude from automatic refresh
+      # Comma-separated list of view names
+      # These views will only be refreshed manually
+      exclude-views: []
+      
+      # Per-view refresh schedules (view name -> interval in minutes)
+      # Example:
+      # view-refresh-schedules:
+      #   user_stats: 30        # Refresh every 30 minutes
+      #   daily_report: 1440    # Refresh once per day
+      #   real_time_view: 5     # Refresh every 5 minutes
+      view-refresh-schedules: {}
+
+
+

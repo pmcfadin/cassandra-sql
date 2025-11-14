@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console appender with pattern -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger level - can be overridden by spring.profiles.active or logging.level.root -->
+    <root level="${LOG_LEVEL:-INFO}">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+    <!-- Cassandra SQL package - defaults to INFO, can be overridden -->
+    <logger name="com.geico.poc.cassandrasql" level="${CASSANDRA_SQL_LOG_LEVEL:-INFO}" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!-- Third-party libraries - keep at INFO or WARN -->
+    <logger name="org.apache.calcite" level="INFO" />
+    <logger name="com.datastax" level="INFO" />
+    <logger name="org.springframework" level="INFO" />
+    <logger name="io.netty" level="INFO" />
+</configuration>
+
+
