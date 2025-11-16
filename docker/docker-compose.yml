@@ -1,0 +1,82 @@
+services:
+  # Cassandra Accord service
+  # Base image: pmcfadin/cassandra-accord from https://github.com/pmcfadin/awesome-accord
+  # Custom build with ByteOrderedPartitioner and Accord enabled (see cassandra/Dockerfile)
+  cassandra:
+    build:
+      context: ./cassandra
+      dockerfile: Dockerfile
+    container_name: cassandra-sql-db
+    hostname: cassandra
+    # Ports are not exposed to host by default (Cassandra is internal only)
+    # Uncomment to expose for debugging:
+    # ports:
+    #   - "9042:9042"  # CQL port
+    #   - "7199:7199"  # JMX port
+    environment:
+      # Cluster configuration
+      - CASSANDRA_CLUSTER_NAME=cassandra-sql-cluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_RACK=rack1
+      # Memory settings
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=256M
+      # Cassandra startup options
+      - CASSANDRA_START_RPC=true
+    volumes:
+      # Persist Cassandra data
+      - cassandra-data:/opt/cassandra/data
+      # Persist Accord journal
+      - accord-journal:/opt/cassandra/data/accord_journal
+    networks:
+      - cassandra-sql-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/cassandra/bin/nodetool status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    restart: unless-stopped
+
+  # cassandra-sql application
+  cassandra-sql:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: cassandra-sql-app
+    hostname: cassandra-sql
+    ports:
+      - "5432:5432"  # PostgreSQL wire protocol
+      - "18080:8080"  # REST API / Health checks (using 18080 to avoid conflicts)
+    environment:
+      # Cassandra connection
+      - CASSANDRA_CONTACT_POINTS=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_LOCAL_DATACENTER=datacenter1
+      - CASSANDRA_KEYSPACE=cassandra_sql
+      # Application settings
+      - CASSANDRA_SQL_STORAGE_MODE=kv
+      - SERVER_PORT=8080
+      # Logging
+      - LOGGING_LEVEL_COM_GEICO_POC_CASSANDRASQL=INFO
+      - LOGGING_LEVEL_ORG_APACHE_CALCITE=INFO
+      - LOGGING_LEVEL_COM_DATASTAX=WARN
+      # JVM settings
+      - JAVA_OPTS=-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    networks:
+      - cassandra-sql-network
+    restart: unless-stopped
+
+networks:
+  cassandra-sql-network:
+    driver: bridge
+    name: cassandra-sql-network
+
+volumes:
+  cassandra-data:
+    name: cassandra-sql-data
+  accord-journal:
+    name: cassandra-accord-journal
