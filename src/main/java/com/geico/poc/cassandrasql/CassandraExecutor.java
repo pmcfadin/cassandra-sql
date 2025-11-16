@@ -9,6 +9,7 @@ import com.geico.poc.cassandrasql.validation.EnhancedSchemaValidator;
 import com.geico.poc.cassandrasql.validation.EnhancedValidationResult;
 import com.geico.poc.cassandrasql.validation.EnhancedValidationResult.ValidationIssue;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
@@ -21,6 +22,15 @@ public class CassandraExecutor {
 
     private CqlSession session;
     private static final String KEYSPACE = "cassandra_sql";
+
+    @Value("${cassandra.contact-points:localhost}")
+    private String contactPoints;
+
+    @Value("${cassandra.port:9042}")
+    private int port;
+
+    @Value("${cassandra.local-datacenter:datacenter1}")
+    private String localDatacenter;
     
     /**
      * Get the Cassandra session for schema validation
@@ -32,12 +42,12 @@ public class CassandraExecutor {
     @PostConstruct
     public void init() {
         try {
-            System.out.println("Connecting to Cassandra at localhost:9042...");
-            
+            System.out.println("Connecting to Cassandra at " + contactPoints + ":" + port + "...");
+
             // Connect to Cassandra
             session = CqlSession.builder()
-                .addContactPoint(new InetSocketAddress("localhost", 9042))
-                .withLocalDatacenter("datacenter1")
+                .addContactPoint(new InetSocketAddress(contactPoints, port))
+                .withLocalDatacenter(localDatacenter)
                 .build();
 
             System.out.println("Connected to Cassandra successfully!");
@@ -56,7 +66,7 @@ public class CassandraExecutor {
         } catch (Exception e) {
             System.err.println("Failed to connect to Cassandra: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Cannot connect to Cassandra. Make sure it's running on localhost:9042", e);
+            throw new RuntimeException("Cannot connect to Cassandra. Make sure it's running on " + contactPoints + ":" + port, e);
         }
     }
 
